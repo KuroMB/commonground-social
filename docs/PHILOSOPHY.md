@@ -63,7 +63,7 @@ The value we capture is strictly proportional to economic activity we enable (co
 
 - **Identity verification tied to behavior surveillance** — we may verify identities for funded projects, but not for browsing or connecting
 - **Direct messaging** — intentional. Use the connection request to exchange contact info and move off-platform.
-- **Photos of people** — privacy, safety, removes appearance-based filtering
+- **Photos of people** — privacy, safety, removes appearance-based filtering. Project and place photos are encouraged; photos that prominently feature individuals are not.
 - **Follower counts or reputation scores** — creates status hierarchies that replicate the problems we're trying to avoid
 - **"Most active neighbor" rankings** — gamification of community participation
 - **Advertising** — ever
