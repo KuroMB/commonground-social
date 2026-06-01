@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import IHaveButton from "@/components/IHaveButton";
 
 interface Resource {
   id: string;
@@ -147,12 +148,7 @@ export default async function ZipPage({
         <p className="text-sm text-stone-500">
           Have something to share?
         </p>
-        <Link
-          href="/join"
-          className="inline-block rounded-lg border border-stone-300 px-6 py-3 text-sm font-medium text-stone-700 hover:border-stone-500 hover:bg-stone-100 transition-colors"
-        >
-          Add your resources
-        </Link>
+        <IHaveButton size="md" />
       </div>
 
     </main>
