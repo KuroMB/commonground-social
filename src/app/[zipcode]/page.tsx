@@ -54,8 +54,11 @@ export default async function ZipPage({
       profiles (display_name, neighborhood),
       places (name)
     `)
+    // zip_code match kept as fallback while lat/lng data populates.
+    // Phase 1: replace with PostGIS ST_DWithin once geocoding is wired up.
     .eq("zip_code", zipcode)
     .eq("is_available", true)
+    .eq("listing_type", "offer")
     .order("created_at", { ascending: false });
 
   if (error) {
