@@ -10,11 +10,16 @@ interface Resource {
     slug: string;
     display_name: string;
     is_consumable: boolean;
+    category: string;
   };
   profiles: {
     display_name: string;
     neighborhood: string | null;
-  };
+  } | null;
+  places: {
+    name: string;
+    neighborhood?: string | null;
+  } | null;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -23,32 +28,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   materials: "Materials",
   labor: "Labor & Skills",
   knowledge: "Knowledge",
+  capital: "Capital",
 };
-
-const TOOL_SLUGS = new Set([
-  "drill", "ladder", "circular-saw", "hand-saw", "lawnmower",
-  "pressure-washer", "wheelbarrow", "shovel", "rake", "tiller",
-  "generator", "extension-cord", "folding-table", "folding-chairs",
-  "pickup-truck", "cargo-van", "trailer",
-]);
-const SPACE_SLUGS = new Set([
-  "backyard", "driveway", "garage", "parking-lot", "community-room",
-]);
-const MATERIAL_SLUGS = new Set([
-  "mulch", "topsoil", "compost", "lumber", "paint", "native-plants",
-  "seeds", "moving-boxes",
-]);
-const LABOR_SLUGS = new Set([
-  "hauling", "moving-help", "yard-work", "childcare", "pet-sitting",
-]);
-
-function categorize(slug: string): string {
-  if (TOOL_SLUGS.has(slug)) return "tools";
-  if (SPACE_SLUGS.has(slug)) return "space";
-  if (MATERIAL_SLUGS.has(slug)) return "materials";
-  if (LABOR_SLUGS.has(slug)) return "labor";
-  return "knowledge";
-}
 
 export default async function ZipPage({
   params,
@@ -69,8 +50,9 @@ export default async function ZipPage({
       id,
       notes,
       zip_code,
-      canonical_tags (slug, display_name, is_consumable),
-      profiles (display_name, neighborhood)
+      canonical_tags (slug, display_name, is_consumable, category),
+      profiles (display_name, neighborhood),
+      places (name)
     `)
     .eq("zip_code", zipcode)
     .eq("is_available", true)
@@ -83,13 +65,13 @@ export default async function ZipPage({
   const resources = (data as unknown as Resource[]) ?? [];
 
   const grouped = resources.reduce<Record<string, Resource[]>>((acc, r) => {
-    const cat = categorize(r.canonical_tags.slug);
+    const cat = r.canonical_tags.category;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(r);
     return acc;
   }, {});
 
-  const categoryOrder = ["tools", "space", "materials", "labor", "knowledge"];
+  const categoryOrder = ["tools", "space", "materials", "labor", "knowledge", "capital"];
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-12 space-y-10">
@@ -143,7 +125,7 @@ export default async function ZipPage({
                       <p className="text-sm text-stone-500 truncate">{r.notes}</p>
                     )}
                     <p className="text-xs text-stone-400">
-                      {r.profiles.neighborhood ?? zipcode}
+                      {r.places?.name ?? r.profiles?.neighborhood ?? zipcode}
                     </p>
                   </div>
                   <Link
