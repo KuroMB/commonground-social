@@ -22,13 +22,6 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-stone-50 text-stone-900">
         {children}
-        <footer className="mt-auto border-t border-stone-200 px-6 py-4">
-          <div className="max-w-2xl mx-auto flex flex-wrap gap-x-6 gap-y-1 text-xs text-stone-400">
-            <a href="/about" className="hover:text-stone-600 transition-colors">About</a>
-            <a href="/docs/philosophy" className="hover:text-stone-600 transition-colors">Philosophy</a>
-            <a href="https://github.com/KuroMB/commonground-social" className="hover:text-stone-600 transition-colors" target="_blank" rel="noopener noreferrer">Source (AGPL)</a>
-          </div>
-        </footer>
         <SupportWidget />
       </body>
     </html>
