@@ -69,6 +69,16 @@ The value we capture is strictly proportional to economic activity we enable (co
 - **Advertising** — ever
 - **Algorithmic curation** — the feed is chronological or proximity-based. No engagement ranking.
 
+### 5. Anti-Consumerism by Function
+
+CommonGround does not take advertising because advertising requires selling attention, and selling attention requires manufacturing desire for things people don't need. That structural conflict is incompatible with what we're building.
+
+But this goes deeper than a business model choice. The core mechanic of this platform — borrowing a drill, sharing a backyard, splitting a load of mulch — is inherently anti-consumerist. Every successful exchange here is a purchase that didn't happen. A tool shared ten times is nine tools not manufactured, not shipped, not sitting unused, not eventually discarded.
+
+We will never run ads. Not because we can't, but because doing so would mean profiting from the impulse to acquire rather than the impulse to share. Those are opposite things.
+
+We track one internal metric related to this: estimated purchases avoided. It informs how we think about impact. It is never shown to users as a score or a badge. We mention it in grant applications and annual reports. That's the appropriate use of the number.
+
 ---
 
 ## Models we admire
