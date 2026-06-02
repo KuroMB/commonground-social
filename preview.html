@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CommonGround — Preview</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fafaf9; color: #1c1917; }
+
+    #map { position: absolute; inset: 0; z-index: 0; }
+
+    /* Wordmark */
+    #wordmark {
+      position: absolute; top: 12px; left: 12px; z-index: 1000;
+      background: rgba(255,255,255,0.85); backdrop-filter: blur(6px);
+      border-radius: 999px; padding: 6px 14px;
+      font-size: 13px; font-weight: 600; color: #1c1917;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+      pointer-events: none;
+    }
+
+    /* Filter bar */
+    #filters {
+      position: absolute; top: 12px; left: 0; right: 0; z-index: 1000;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      pointer-events: none;
+    }
+    .filter-row { display: flex; gap: 6px; pointer-events: auto; }
+    .filter-btn {
+      border-radius: 999px; border: 1px solid #e7e5e4;
+      padding: 6px 14px; font-size: 12px; font-weight: 500;
+      background: white; color: #57534e; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: #a8a29e; }
+    .filter-btn.active-resource { background: #1c1917; color: white; border-color: #1c1917; }
+    .filter-btn.active-need     { background: #f59e0b; color: white; border-color: #f59e0b; }
+    .filter-btn.active-vision   { background: #2563eb; color: white; border-color: #2563eb; }
+    .filter-btn.active-place    { background: #059669; color: white; border-color: #059669; }
+    .filter-btn.active-cat      { background: #292524; color: white; border-color: #292524; }
+    .cat-btn { font-size: 11px; padding: 4px 10px; }
+
+    /* Detail panel */
+    #panel {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; width: calc(100% - 32px); max-width: 380px;
+      background: white; border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.16); border: 1px solid #e7e5e4;
+      overflow: hidden; display: none;
+    }
+    #panel.open { display: block; }
+    .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 12px; }
+    .panel-badges { display: flex; align-items: center; gap: 8px; }
+    .type-badge { border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 500; }
+    .badge-resource { background: #1c1917; color: white; }
+    .badge-need     { background: #f59e0b; color: white; }
+    .badge-vision   { background: #2563eb; color: white; }
+    .badge-place    { background: #059669; color: white; }
+    .cat-label { font-size: 11px; color: #a8a29e; text-transform: capitalize; }
+    .close-btn { background: none; border: none; font-size: 22px; color: #a8a29e; cursor: pointer; line-height: 1; padding: 0; }
+    .close-btn:hover { color: #1c1917; }
+    .panel-body { padding: 0 16px 16px; }
+    .panel-title { font-size: 15px; font-weight: 600; color: #1c1917; margin-bottom: 6px; }
+    .panel-notes { font-size: 13px; color: #78716c; line-height: 1.5; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .panel-meta { font-size: 12px; color: #a8a29e; display: flex; gap: 10px; align-items: center; }
+    .status-chip { background: #f5f5f4; border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+    .panel-footer { border-top: 1px solid #f5f5f4; padding: 12px 16px; }
+    .panel-cta { display: block; width: 100%; text-align: center; background: #1c1917; color: white; border: none; border-radius: 12px; padding: 10px; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+    .panel-cta:hover { background: #44403c; }
+
+    /* I have button */
+    #ihave-wrap { position: absolute; bottom: 24px; right: 16px; z-index: 1000; }
+    #ihave-menu {
+      position: absolute; bottom: calc(100% + 8px); right: 0;
+      background: white; border-radius: 16px; border: 1px solid #e7e5e4;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.14); min-width: 200px;
+      overflow: hidden; display: none;
+    }
+    #ihave-menu.open { display: block; }
+    .ihave-option { display: flex; flex-direction: column; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f5f5f4; transition: background 0.1s; }
+    .ihave-option:last-child { border-bottom: none; }
+    .ihave-option:hover { background: #fafaf9; }
+    .ihave-label { font-size: 13px; font-weight: 500; color: #1c1917; }
+    .ihave-hint { font-size: 11px; color: #a8a29e; margin-top: 1px; }
+    #ihave-btn {
+      background: #1c1917; color: white; border: none; border-radius: 12px;
+      padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: background 0.15s;
+    }
+    #ihave-btn:hover { background: #44403c; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="wordmark">CommonGround</div>
+
+<div id="filters">
+  <div class="filter-row" id="type-row">
+    <button class="filter-btn active-resource" data-type="resource">Resources</button>
+    <button class="filter-btn active-need"     data-type="need">Needs</button>
+    <button class="filter-btn active-vision"   data-type="vision">Visions</button>
+    <button class="filter-btn active-place"    data-type="place">Places</button>
+  </div>
+  <div class="filter-row" id="cat-row">
+    <button class="filter-btn cat-btn" data-cat="tools">Tools</button>
+    <button class="filter-btn cat-btn" data-cat="space">Space</button>
+    <button class="filter-btn cat-btn" data-cat="materials">Materials</button>
+    <button class="filter-btn cat-btn" data-cat="labor">Labor</button>
+    <button class="filter-btn cat-btn" data-cat="knowledge">Knowledge</button>
+    <button class="filter-btn cat-btn" data-cat="capital">Capital</button>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="panel-header">
+    <div class="panel-badges">
+      <span class="type-badge" id="panel-badge"></span>
+      <span class="cat-label" id="panel-cat"></span>
+    </div>
+    <button class="close-btn" id="panel-close">×</button>
+  </div>
+  <div class="panel-body">
+    <div class="panel-title" id="panel-title"></div>
+    <div class="panel-notes" id="panel-notes"></div>
+    <div class="panel-meta">
+      <span id="panel-owner"></span>
+      <span class="status-chip" id="panel-status"></span>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <a href="#" class="panel-cta">View details</a>
+  </div>
+</div>
+
+<div id="ihave-wrap">
+  <div id="ihave-menu">
+    <div class="ihave-option"><span class="ihave-label">Tools</span><span class="ihave-hint">drills, ladders, saws, mowers…</span></div>
+    <div class="ihave-option"><span class="ihave-label">Space</span><span class="ihave-hint">backyard, garage, parking, rooms…</span></div>
+    <div class="ihave-option"><span class="ihave-label">Materials</span><span class="ihave-hint">lumber, soil, seeds, boxes…</span></div>
+    <div class="ihave-option"><span class="ihave-label">Labor</span><span class="ihave-hint">hauling, moving, yard work…</span></div>
+    <div class="ihave-option"><span class="ihave-label">Knowledge</span><span class="ihave-hint">electrical, plumbing, cooking…</span></div>
+  </div>
+  <button id="ihave-btn">I have…</button>
+</div>
+
+<script>
+// ── Fake data ──────────────────────────────────────────────────────────────
+const PINS = [
+  { id:1, type:"resource", lat:38.629, lng:-90.201, title:"DeWalt Drill", category:"tools",     notes:"Cordless, two batteries included. Happy to lend for a weekend.", owner:"Marcus T." },
+  { id:2, type:"resource", lat:38.625, lng:-90.196, title:"Extension Ladder", category:"tools", notes:"20ft aluminum, good condition.", owner:"Priya S." },
+  { id:3, type:"need",     lat:38.631, lng:-90.204, title:"Lawn Mower",  category:"tools",     notes:"Need to cut grass before Sunday — any push mower works.", owner:"Jamie L." },
+  { id:4, type:"resource", lat:38.624, lng:-90.198, title:"Backyard Space", category:"space",  notes:"Flat quarter-acre, available most weekends for gatherings or projects." , owner:"The Nguyens" },
+  { id:5, type:"vision",   lat:38.627, lng:-90.194, title:"Community Compost Bin", status:"active", notes:"Install a shared compost station behind the library. Need a bin, someone to manage it, and city sign-off." },
+  { id:6, type:"vision",   lat:38.622, lng:-90.202, title:"Pocket Library", status:"proposed", notes:"Convert the old phone booth on Maple into a little free library." },
+  { id:7, type:"place",    lat:38.630, lng:-90.199, title:"Shaw Community Church", status:"community", notes:"Open tool lending Tuesday & Thursday evenings." },
+  { id:8, type:"place",    lat:38.626, lng:-90.207, title:"Botanical Heights Garden", status:"osm" },
+  { id:9, type:"resource", lat:38.632, lng:-90.197, title:"Welding Know-how", category:"knowledge", notes:"Stick and MIG. Can help with small projects.", owner:"Dan K." },
+  { id:10, type:"need",    lat:38.623, lng:-90.193, title:"Moving Help",  category:"labor",    notes:"Need 2 people this Saturday for a 3rd-floor move. Happy to buy lunch.", owner:"Sofia R." },
+];
+
+const PIN_COLORS = { resource:"#1c1917", need:"#d97706", vision:"#2563eb", place:"#059669" };
+const TYPE_LABEL  = { resource:"Resource", need:"Need", vision:"Vision", place:"Place" };
+const STATUS_LABEL = { proposed:"Proposed", active:"Active", funded:"Funded", in_progress:"In Progress", completed:"Completed", self:"Listed", community:"Community Verified", osm:"OSM Verified", manual:"Verified", partner:"Partner" };
+
+// ── Map ────────────────────────────────────────────────────────────────────
+const map = L.map("map", { center:[38.627,-90.199], zoom:14, zoomControl:true });
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>', maxZoom:19
+}).addTo(map);
+
+// ── Filter state ───────────────────────────────────────────────────────────
+let activeTypes = new Set(["resource","need","vision","place"]);
+let activeCats  = new Set();
+
+function showCatRow() {
+  document.getElementById("cat-row").style.display =
+    (activeTypes.has("resource") || activeTypes.has("need")) ? "flex" : "none";
+}
+showCatRow();
+
+// ── Render pins ────────────────────────────────────────────────────────────
+let markers = [];
+function renderPins() {
+  markers.forEach(m => m.remove());
+  markers = [];
+  PINS.forEach(pin => {
+    if (!activeTypes.has(pin.type)) return;
+    if (activeCats.size && pin.category && !activeCats.has(pin.category)) return;
+    const color  = PIN_COLORS[pin.type];
+    const radius = pin.type === "place" ? 10 : 7;
+    const m = L.circleMarker([pin.lat, pin.lng], {
+      radius, color:"white", weight:2, fillColor:color, fillOpacity:0.9
+    }).addTo(map);
+    m.on("click", () => openPanel(pin));
+    markers.push(m);
+  });
+}
+renderPins();
+
+// ── Panel ──────────────────────────────────────────────────────────────────
+const panel = document.getElementById("panel");
+function openPanel(pin) {
+  document.getElementById("panel-badge").textContent  = TYPE_LABEL[pin.type];
+  document.getElementById("panel-badge").className    = "type-badge badge-" + pin.type;
+  document.getElementById("panel-cat").textContent    = pin.category ?? "";
+  document.getElementById("panel-title").textContent  = pin.title;
+  document.getElementById("panel-notes").textContent  = pin.notes ?? "";
+  document.getElementById("panel-owner").textContent  = pin.owner ?? "";
+  const statusEl = document.getElementById("panel-status");
+  statusEl.textContent = pin.status ? (STATUS_LABEL[pin.status] ?? "") : "";
+  statusEl.style.display = pin.status ? "inline" : "none";
+  panel.classList.add("open");
+}
+document.getElementById("panel-close").addEventListener("click", () => panel.classList.remove("open"));
+
+// ── Type filter buttons ────────────────────────────────────────────────────
+document.querySelectorAll("[data-type]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const t = btn.dataset.type;
+    if (activeTypes.has(t)) { activeTypes.delete(t); btn.className = "filter-btn"; }
+    else { activeTypes.add(t); btn.className = "filter-btn active-" + t; }
+    showCatRow();
+    renderPins();
+  });
+});
+
+// ── Category filter buttons ────────────────────────────────────────────────
+document.querySelectorAll("[data-cat]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const c = btn.dataset.cat;
+    if (activeCats.has(c)) { activeCats.delete(c); btn.classList.remove("active-cat"); }
+    else { activeCats.add(c); btn.classList.add("active-cat"); }
+    renderPins();
+  });
+});
+
+// ── I have… button ────────────────────────────────────────────────────────
+const ihaveMenu = document.getElementById("ihave-menu");
+document.getElementById("ihave-btn").addEventListener("click", e => {
+  e.stopPropagation();
+  ihaveMenu.classList.toggle("open");
+});
+document.addEventListener("click", () => ihaveMenu.classList.remove("open"));
+</script>
+</body>
+</html>
