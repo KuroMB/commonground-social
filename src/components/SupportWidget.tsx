@@ -6,7 +6,7 @@ import { submitFeedback } from "@/app/actions/feedback";
 
 type Panel = null | "receive" | "give";
 
-const INITIAL_STATE = { error: undefined as string | undefined, success: false };
+const INITIAL_STATE: { error?: string; success?: boolean } = {};
 
 export default function SupportWidget() {
   const pathname = usePathname();
