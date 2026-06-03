@@ -1,5 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+
+function getSupabase() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +25,7 @@ export type MapPin = {
 };
 
 export async function GET(request: Request) {
+  try {
   const { searchParams } = new URL(request.url);
   const lat   = parseFloat(searchParams.get("lat")    ?? "");
   const lng   = parseFloat(searchParams.get("lng")    ?? "");
@@ -29,7 +37,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "lat and lng required" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = getSupabase();
   const pins: MapPin[] = [];
 
   // ── Resources & Needs ──────────────────────────────────────────
@@ -42,13 +50,10 @@ export async function GET(request: Request) {
       .select("id, listing_type, notes, zip_code, owner_name, category, location, radius_meters")
       .filter("is_available", "eq", true)
       .filter("listing_type", "in", `(${wantedTypes.map((t) => `"${t}"`).join(",")})`)
-      // PostGIS distance filter via RPC not available without postgis on anon key —
-      // fall back to bounding-box approximation until the migration is live.
       .not("location", "is", null);
 
     if (cats.length) q = q.in("category", cats);
 
-    // Fetch and filter client-side for the bounding box (lat/lng approx)
     const { data } = await q.limit(500);
 
     const degRadius = radius / 111_320;
@@ -77,12 +82,14 @@ export async function GET(request: Request) {
 
   // ── Places / Supernodes ────────────────────────────────────────
   if (types.includes("place")) {
-    const { data } = await supabase
+    const { data, error: placeError } = await supabase
       .from("places")
       .select("id, name, lat, lng, trust_tier")
       .eq("is_public", true)
       .not("lat", "is", null)
       .limit(200);
+
+    if (placeError) console.error("places query error:", placeError.message);
 
     const degRadius = radius / 111_320;
     (data ?? []).forEach((p: Record<string, unknown>) => {
@@ -131,5 +138,23 @@ export async function GET(request: Request) {
     });
   }
 
+  // Temporary debug — remove after fixing
+  const debug = searchParams.get("debug");
+  if (debug) {
+    const { data: sampleData, error: sampleError } = await getSupabase()
+      .from("places")
+      .select("id, name, lat, lng, is_public")
+      .limit(5);
+    return NextResponse.json({
+      pins_found: pins.length,
+      sample_rows: sampleData,
+      sample_error: sampleError?.message ?? null,
+    });
+  }
+
   return NextResponse.json(pins);
+  } catch (err) {
+    console.error("map route error:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
