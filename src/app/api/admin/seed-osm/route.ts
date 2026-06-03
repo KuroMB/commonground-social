@@ -4,6 +4,12 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 // OSM amenity tags we care about
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://lz4.overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
+
 const RELEVANT_TAGS = [
   '["amenity"="tool_library"]',
   '["amenity"="community_centre"]',
@@ -47,17 +53,27 @@ export async function GET(request: Request) {
   const dLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
   const bbox = `${lat - dLat},${lng - dLng},${lat + dLat},${lng + dLng}`;
 
-  const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    body: buildOverpassQuery(bbox),
-    headers: { "Content-Type": "text/plain" },
-  });
+  let overpassRes: Response | null = null;
+  let usedEndpoint = "";
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        body: buildOverpassQuery(bbox),
+        headers: { "Content-Type": "text/plain" },
+      });
+      if (res.ok) { overpassRes = res; usedEndpoint = endpoint; break; }
+    } catch {
+      // try next mirror
+    }
+  }
 
-  if (!overpassRes.ok) {
-    return NextResponse.json({ error: "Overpass API error" }, { status: 502 });
+  if (!overpassRes) {
+    return NextResponse.json({ error: "All Overpass mirrors unavailable — try again in a few minutes" }, { status: 502 });
   }
 
   const { elements }: { elements: OsmElement[] } = await overpassRes.json();
+  void usedEndpoint;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
