@@ -139,11 +139,16 @@ export async function GET(request: Request) {
 
   // Temporary debug — remove after fixing
   const debug = searchParams.get("debug");
-  if (debug && pins.length === 0) {
-    const { count } = await (await createClient())
+  if (debug) {
+    const { data: sampleData, error: sampleError } = await (await createClient())
       .from("places")
-      .select("*", { count: "exact", head: true });
-    return NextResponse.json({ pins: [], debug: { places_in_db: count } });
+      .select("id, name, lat, lng, is_public")
+      .limit(5);
+    return NextResponse.json({
+      pins_found: pins.length,
+      sample_rows: sampleData,
+      sample_error: sampleError?.message ?? null,
+    });
   }
 
   return NextResponse.json(pins);
