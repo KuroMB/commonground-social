@@ -18,6 +18,7 @@ export type MapPin = {
 };
 
 export async function GET(request: Request) {
+  try {
   const { searchParams } = new URL(request.url);
   const lat   = parseFloat(searchParams.get("lat")    ?? "");
   const lng   = parseFloat(searchParams.get("lng")    ?? "");
@@ -132,4 +133,8 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json(pins);
+  } catch (err) {
+    console.error("map route error:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
