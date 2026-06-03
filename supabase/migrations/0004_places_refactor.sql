@@ -1,17 +1,6 @@
--- ─────────────────────────────────────────────
--- PLACES REFACTOR
---
--- Resources can belong to a person, a place, or both.
--- Supernodes emerge from resource density — never assigned.
--- Replaces the communities tables from 0002.
--- ─────────────────────────────────────────────
+drop table if exists community_members cascade;
+drop table if exists communities cascade;
 
-
--- ─────────────────────────────────────────────
--- Add category to canonical_tags.
--- Moves the JS categorize() logic into the DB
--- so SQL can filter and group by category.
--- ─────────────────────────────────────────────
 alter table canonical_tags
   add column category text not null default 'knowledge'
     check (category in ('tools','space','materials','labor','knowledge','capital'));
@@ -32,33 +21,9 @@ update canonical_tags set category = 'materials' where slug in (
 update canonical_tags set category = 'labor' where slug in (
   'hauling','moving-help','yard-work','childcare','pet-sitting'
 );
--- 'knowledge' is the default; covers remaining tags.
--- 'capital' is seeded separately when that feature ships.
-
-
--- ─────────────────────────────────────────────
--- Drop communities tables from 0002.
--- Nothing is built on top of these yet.
--- ─────────────────────────────────────────────
-drop table if exists community_members;
-drop table if exists communities;
 
 alter table user_resources drop column if exists community_id;
 
-
--- ─────────────────────────────────────────────
--- PLACES
--- Physical locations as first-class objects.
--- A garage, a church, a tool library, a wooded lot —
--- any real-world anchor for resources.
---
--- Verification is free-only:
---   self      = self-reported (default)
---   community = vouched by users who've visited
---   osm       = matched to an OpenStreetMap node/way
---   manual    = admin reviewed it (no cost, just time)
---   partner   = contractual relationship
--- ─────────────────────────────────────────────
 create table places (
   id           uuid primary key default gen_random_uuid(),
   name         text not null,
@@ -68,10 +33,10 @@ create table places (
   zip_code     text not null,
   lat          numeric(9,6),
   lng          numeric(9,6),
-  hours        jsonb,               -- { "mon": "9-5", "tue": null, ... }
+  hours        jsonb,
   website      text,
   is_public    boolean not null default true,
-  osm_id       text,                -- OpenStreetMap node/way ID for cross-reference
+  osm_id       text,
   trust_tier   text not null default 'self'
                  check (trust_tier in ('self','community','osm','manual','partner')),
   verified_at  timestamptz,
@@ -84,34 +49,9 @@ alter table places enable row level security;
 create policy "Anyone can read public places"
   on places for select using (is_public = true);
 
-create policy "Managers can read their private places"
-  on places for select using (
-    not is_public
-    and exists (
-      select 1 from place_managers pm
-      where pm.place_id = places.id and pm.profile_id = auth.uid()
-    )
-  );
-
 create policy "Authenticated users can create places"
   on places for insert with check (auth.uid() = created_by);
 
-create policy "Managers can update places"
-  on places for update using (
-    exists (
-      select 1 from place_managers pm
-      where pm.place_id = places.id and pm.profile_id = auth.uid()
-    )
-  );
-
-
--- ─────────────────────────────────────────────
--- PLACE MANAGERS
--- Who can operate and edit a given place.
--- Creator is added as owner via app logic on insert.
--- A person can manage multiple places.
--- A place can have multiple managers.
--- ─────────────────────────────────────────────
 create table place_managers (
   place_id    uuid not null references places(id) on delete cascade,
   profile_id  uuid not null references profiles(id) on delete cascade,
@@ -152,12 +92,23 @@ create policy "Owners can remove managers"
     )
   );
 
+create policy "Managers can read their private places"
+  on places for select using (
+    not is_public
+    and exists (
+      select 1 from place_managers pm
+      where pm.place_id = places.id and pm.profile_id = auth.uid()
+    )
+  );
 
--- ─────────────────────────────────────────────
--- Update user_resources.
--- Resources can now belong to a person, a place,
--- or both. At least one must be set.
--- ─────────────────────────────────────────────
+create policy "Managers can update places"
+  on places for update using (
+    exists (
+      select 1 from place_managers pm
+      where pm.place_id = places.id and pm.profile_id = auth.uid()
+    )
+  );
+
 alter table user_resources
   alter column profile_id drop not null,
   add column place_id uuid references places(id) on delete cascade;
@@ -166,8 +117,6 @@ alter table user_resources
   add constraint resource_has_owner
     check (profile_id is not null or place_id is not null);
 
--- Replace the old single-owner policy with one that
--- allows both profile owners and place managers to manage resources.
 drop policy if exists "Users can manage own resources" on user_resources;
 
 create policy "Owners can manage their resources"
@@ -181,12 +130,6 @@ create policy "Owners can manage their resources"
     ))
   );
 
-
--- ─────────────────────────────────────────────
--- SPONSORS
--- Credit-only. A badge on a place page.
--- No analytics, no targeting, no reporting.
--- ─────────────────────────────────────────────
 create table sponsors (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
@@ -198,7 +141,7 @@ create table sponsors (
 create table place_sponsors (
   place_id    uuid not null references places(id) on delete cascade,
   sponsor_id  uuid not null references sponsors(id) on delete cascade,
-  note        text,                -- "Donated initial tool inventory"
+  note        text,
   primary key (place_id, sponsor_id)
 );
 
@@ -211,13 +154,6 @@ create policy "Anyone can read active sponsors"
 create policy "Anyone can read place sponsors"
   on place_sponsors for select using (true);
 
-
--- ─────────────────────────────────────────────
--- SUPERNODES VIEW
--- Computed, never stored. A place becomes a supernode
--- when it has resources in 2+ categories or 5+ total.
--- No one assigns this — it emerges from the data.
--- ─────────────────────────────────────────────
 create view supernodes as
 select
   p.*,
