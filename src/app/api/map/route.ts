@@ -78,21 +78,25 @@ export async function GET(request: Request) {
 
   // ── Places / Supernodes ────────────────────────────────────────
   if (types.includes("place")) {
-    const { data } = await supabase
+    const { data, error: placeError } = await supabase
       .from("places")
       .select("id, name, lat, lng, trust_tier")
       .eq("is_public", true)
       .not("lat", "is", null)
       .limit(200);
 
+    if (placeError) console.error("places query error:", placeError.message);
+
     const degRadius = radius / 111_320;
+    let placeTotal = (data ?? []).length;
+    let placeFiltered = 0;
     (data ?? []).forEach((p: Record<string, unknown>) => {
       const pLat = p.lat as number;
       const pLng = p.lng as number;
       if (
         Math.abs(pLat - lat) > degRadius ||
         Math.abs(pLng - lng) > degRadius * 1.5
-      ) return;
+      ) { placeFiltered++; return; }
       pins.push({
         id:     p.id as string,
         type:   "place",
@@ -102,6 +106,7 @@ export async function GET(request: Request) {
         status: p.trust_tier as string,
       });
     });
+    console.log(`places: ${placeTotal} from DB, ${placeFiltered} outside bbox, ${placeTotal - placeFiltered} returned`);
   }
 
   // ── Visions ────────────────────────────────────────────────────
@@ -130,6 +135,15 @@ export async function GET(request: Request) {
         status: v.status as string,
       });
     });
+  }
+
+  // Temporary debug — remove after fixing
+  const debug = searchParams.get("debug");
+  if (debug && pins.length === 0) {
+    const { count } = await (await createClient())
+      .from("places")
+      .select("*", { count: "exact", head: true });
+    return NextResponse.json({ pins: [], debug: { places_in_db: count } });
   }
 
   return NextResponse.json(pins);
