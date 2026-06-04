@@ -45,7 +45,7 @@ export default function Home() {
       <MapDetailPanel pin={selectedPin} onClose={() => setSelectedPin(null)} />
 
       {/* I have… CTA — bottom right, above iOS home indicator */}
-      <div className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom,1.5rem))] right-4 z-[1000]">
+      <div className="absolute bottom-24 right-4 z-[1000]">
         <IHaveButton size="md" />
       </div>
 

@@ -36,7 +36,7 @@ function toggle(arr: string[], id: string) {
 
 export default function MapFilters({ types, categories, onTypesChange, onCategoriesChange }: Props) {
   return (
-    <div className="absolute top-3 left-0 right-0 z-[1000] flex flex-col items-center gap-2 pointer-events-none">
+    <div className="absolute top-14 left-0 right-0 z-[1000] flex flex-col items-center gap-2 pointer-events-none">
 
       {/* Type toggles */}
       <div className="flex gap-1.5 pointer-events-auto">
