@@ -33,8 +33,8 @@ interface Props {
 }
 
 export default function Map({
-  initialLat = 38.627,
-  initialLng = -90.199,
+  initialLat = 38.678,
+  initialLng = -90.414,
   types,
   categories,
   onPinSelect,
