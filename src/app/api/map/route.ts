@@ -1,5 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+
+function getSupabase() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +37,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "lat and lng required" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = getSupabase();
   const pins: MapPin[] = [];
 
   // ── Resources & Needs ──────────────────────────────────────────
@@ -43,13 +50,10 @@ export async function GET(request: Request) {
       .select("id, listing_type, notes, zip_code, owner_name, category, location, radius_meters")
       .filter("is_available", "eq", true)
       .filter("listing_type", "in", `(${wantedTypes.map((t) => `"${t}"`).join(",")})`)
-      // PostGIS distance filter via RPC not available without postgis on anon key —
-      // fall back to bounding-box approximation until the migration is live.
       .not("location", "is", null);
 
     if (cats.length) q = q.in("category", cats);
 
-    // Fetch and filter client-side for the bounding box (lat/lng approx)
     const { data } = await q.limit(500);
 
     const degRadius = radius / 111_320;
@@ -88,15 +92,13 @@ export async function GET(request: Request) {
     if (placeError) console.error("places query error:", placeError.message);
 
     const degRadius = radius / 111_320;
-    let placeTotal = (data ?? []).length;
-    let placeFiltered = 0;
     (data ?? []).forEach((p: Record<string, unknown>) => {
       const pLat = p.lat as number;
       const pLng = p.lng as number;
       if (
         Math.abs(pLat - lat) > degRadius ||
         Math.abs(pLng - lng) > degRadius * 1.5
-      ) { placeFiltered++; return; }
+      ) return;
       pins.push({
         id:     p.id as string,
         type:   "place",
@@ -106,7 +108,6 @@ export async function GET(request: Request) {
         status: p.trust_tier as string,
       });
     });
-    console.log(`places: ${placeTotal} from DB, ${placeFiltered} outside bbox, ${placeTotal - placeFiltered} returned`);
   }
 
   // ── Visions ────────────────────────────────────────────────────
@@ -140,7 +141,7 @@ export async function GET(request: Request) {
   // Temporary debug — remove after fixing
   const debug = searchParams.get("debug");
   if (debug) {
-    const { data: sampleData, error: sampleError } = await (await createClient())
+    const { data: sampleData, error: sampleError } = await getSupabase()
       .from("places")
       .select("id, name, lat, lng, is_public")
       .limit(5);

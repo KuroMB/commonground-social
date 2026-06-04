@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-type FeedbackState = { error?: string; success?: boolean };
+export type FeedbackState = { error?: string; success?: boolean };
 
 export async function submitFeedback(_prev: FeedbackState, formData: FormData): Promise<FeedbackState> {
   const message = (formData.get("message") as string)?.trim();
