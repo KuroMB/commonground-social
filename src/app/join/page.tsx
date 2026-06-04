@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { sendMagicLink } from "@/app/actions/auth";
 import Link from "next/link";
 
 export default function JoinPage() {
-  const [email, setEmail]   = useState("");
-  const [sent, setSent]     = useState(false);
-  const [error, setError]   = useState("");
+  const [email, setEmail]     = useState("");
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -15,16 +15,13 @@ export default function JoinPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await sendMagicLink(
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+      `${window.location.origin}/auth/callback`
+    );
 
     if (error) {
-      setError(error.message);
+      setError(error);
     } else {
       setSent(true);
     }
