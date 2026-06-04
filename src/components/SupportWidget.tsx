@@ -2,11 +2,11 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { submitFeedback } from "@/app/actions/feedback";
+import { submitFeedback, type FeedbackState } from "@/app/actions/feedback";
 
 type Panel = null | "receive" | "give";
 
-const INITIAL_STATE = { error: undefined as string | undefined, success: false };
+const INITIAL_STATE: FeedbackState = {};
 
 export default function SupportWidget() {
   const pathname = usePathname();
