@@ -10,6 +10,18 @@ function getSupabase() {
   );
 }
 
+async function geocodeZip(zip: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?postalcode=${zip}&countrycodes=US&format=json&limit=1`,
+      { headers: { "User-Agent": "CommonGround/1.0 (commonground-social.vercel.app)" } }
+    );
+    const data = await res.json();
+    if (data?.[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch { /* non-fatal */ }
+  return null;
+}
+
 export type ProfileState = { error?: string; success?: boolean };
 
 export async function createProfile(
@@ -28,11 +40,15 @@ export async function createProfile(
   if (!display_name) return { error: "Display name is required." };
   if (!zip_code || !/^\d{5}$/.test(zip_code)) return { error: "Enter a valid 5-digit zip code." };
 
+  const coords = await geocodeZip(zip_code);
+
   const { error } = await getSupabase().from("profiles").upsert({
     id: user.id,
     display_name,
     zip_code,
     neighborhood,
+    lat: coords?.lat ?? null,
+    lng: coords?.lng ?? null,
   }, { onConflict: "id" });
 
   if (error) {
