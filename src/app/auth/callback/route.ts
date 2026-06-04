@@ -47,7 +47,18 @@ export async function GET(request: Request) {
     authError = error;
   }
 
-  if (authError) console.error("auth callback error:", authError.message);
+  if (authError) {
+    console.error("auth callback error:", authError.message);
+    const detail = encodeURIComponent(authError.message);
+    return NextResponse.redirect(`${origin}/join?error=link_failed&detail=${detail}`);
+  }
+
+  if (!code && !token_hash) {
+    // Log all params for debugging
+    const allParams = Object.fromEntries(searchParams.entries());
+    console.error("auth callback: no code or token_hash. params:", allParams);
+    return NextResponse.redirect(`${origin}/join?error=missing_token`);
+  }
 
   if (user) {
     const admin = createServiceClient(supabaseUrl(), supabaseKey());

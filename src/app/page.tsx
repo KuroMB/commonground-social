@@ -44,8 +44,8 @@ export default function Home() {
       {/* Detail panel — slides up from bottom on pin select */}
       <MapDetailPanel pin={selectedPin} onClose={() => setSelectedPin(null)} />
 
-      {/* I have… CTA — bottom right */}
-      <div className="absolute bottom-6 right-4 z-[1000]">
+      {/* I have… CTA — bottom right, above iOS home indicator */}
+      <div className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom,1.5rem))] right-4 z-[1000]">
         <IHaveButton size="md" />
       </div>
 

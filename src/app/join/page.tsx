@@ -1,8 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { sendMagicLink } from "@/app/actions/auth";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+
+function ErrorFromUrl() {
+  const params = useSearchParams();
+  const err = params.get("error");
+  const detail = params.get("detail");
+  if (!err) return null;
+  return (
+    <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 space-y-1">
+      <p className="font-medium">Sign-in failed</p>
+      <p className="text-xs opacity-80">{detail ?? err}</p>
+    </div>
+  );
+}
 
 export default function JoinPage() {
   const [email, setEmail]     = useState("");
@@ -57,6 +71,10 @@ export default function JoinPage() {
           No password. We&apos;ll email you a sign-in link.
         </p>
       </div>
+
+      <Suspense>
+        <ErrorFromUrl />
+      </Suspense>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
